@@ -92,7 +92,7 @@
 			{
 				loading: 'Deleting file...',
 				success: 'File deleted!',
-				error: 'Error while deletion!'
+				error: 'Error during deletion!'
 			}
 		);
 	};
