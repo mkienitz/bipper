@@ -49,7 +49,7 @@
 					const chunk = withMeta.slice(start, end);
 					const encryptedChunk = await encryptChunk(chunk, key);
 
-					const res = await fetch(`/${keyHash}?chunkIdx=${i}&totalSize=${totalSize}`, {
+					const res = await fetch(`/api/${keyHash}?chunkIdx=${i}&totalSize=${totalSize}`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/octet-stream'
@@ -82,7 +82,7 @@
 				}
 				const res = await restoreKey(passphrase)
 					.then((key) => hashKey(key))
-					.then((keyHash) => fetch(`/${keyHash}`, { method: 'delete' }));
+					.then((keyHash) => fetch(`/api/${keyHash}`, { method: 'delete' }));
 				if (res.status !== 204) {
 					console.error(res.body);
 					throw new Error('Deletion request failed');
@@ -105,7 +105,7 @@
 				}
 				const key = await restoreKey(passphrase);
 				const keyHash = await hashKey(key);
-				const res = await fetch(`/${keyHash}`);
+				const res = await fetch(`/api/${keyHash}`);
 				// Create decrypted blob and extract metadata
 				const stream = res
 					.body!.pipeThrough(getChunkTransformer())
