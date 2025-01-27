@@ -30,6 +30,7 @@
 
       imports = [
         inputs.devshell.flakeModule
+        inputs.flake-parts.flakeModules.easyOverlay
         inputs.pre-commit-hooks.flakeModule
         inputs.treefmt-nix.flakeModule
       ];
@@ -79,6 +80,8 @@
               runHook postInstall
             '';
           };
+
+          overlayAttrs.bipper = config.packages.default;
 
           treefmt = {
             projectRootFile = "flake.nix";
