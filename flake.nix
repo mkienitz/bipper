@@ -80,6 +80,10 @@
                 --add-flags $out/share/build
               runHook postInstall
             '';
+            meta = {
+              description = "A simple file storage service that encrypts and decrypts files on the client";
+              mainProgram = "bipper";
+            };
           };
 
           overlayAttrs.bipper = config.packages.default;
