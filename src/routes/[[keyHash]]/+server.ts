@@ -110,8 +110,13 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 export const GET: RequestHandler = async ({ params }) => {
 	const filePath = path.join(STORE_DIR, validateKeyHash(params.keyHash));
 	console.info(`Serving ${filePath}...`);
-	const fileStream = createReadStream(filePath) as unknown as BodyInit;
-	return new Response(fileStream);
+	try {
+		const fileStream = createReadStream(filePath) as unknown as BodyInit;
+		return new Response(fileStream);
+	} catch (e) {
+		console.info('File not found!');
+		error(404);
+	}
 };
 
 export const DELETE: RequestHandler = async ({ params }) => {
