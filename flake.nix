@@ -33,6 +33,7 @@
         inputs.flake-parts.flakeModules.easyOverlay
         inputs.pre-commit-hooks.flakeModule
         inputs.treefmt-nix.flakeModule
+        ./nix/nixModules.nix
       ];
 
       perSystem =
