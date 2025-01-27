@@ -47,6 +47,15 @@
               type = types.str;
               default = "/var/lib/bipper";
             };
+            storageDuration = mkOption {
+              description = ''
+                How long to store encrypted blobs.
+                The periodic cleanup is achieved using systemd tmpfiles.
+              '';
+              type = types.str;
+              default = "1d";
+              example = "1d";
+            };
           };
           config = mkIf cfg.enable {
             nixpkgs.overlays = [
