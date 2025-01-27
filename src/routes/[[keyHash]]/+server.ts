@@ -66,7 +66,7 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 	}
 	const uploadInfo: UploadInfo = parseResult.data;
 
-	const filePath = path.join(STORE_DIR, 'store/', uploadInfo.keyHash);
+	const filePath = path.join(STORE_DIR, uploadInfo.keyHash);
 	if (!uploadStates.has(uploadInfo.keyHash)) {
 		console.info('Starting new transaction...');
 		const fileHandle = await fs.open(filePath, 'w+');
