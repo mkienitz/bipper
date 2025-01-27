@@ -64,7 +64,6 @@ export const encryptChunk = async (chunk: Blob, key: CryptoKey): Promise<Blob> =
 };
 
 export const decryptChunk = async (chunk: Uint8Array, key: CryptoKey): Promise<Uint8Array> => {
-	console.log(`Before ${chunk.length}`);
 	const res = new Uint8Array(
 		await crypto.subtle.decrypt(
 			{
@@ -75,7 +74,6 @@ export const decryptChunk = async (chunk: Uint8Array, key: CryptoKey): Promise<U
 			chunk.slice(12)
 		)
 	);
-	console.log(`After ${res.length}`);
 	return res;
 };
 
@@ -106,7 +104,6 @@ export const getDecryptTransformer = (key: CryptoKey): TransformStream<Uint8Arra
 	let buffer = new Uint8Array(0);
 	return new TransformStream({
 		async transform(chunk: Uint8Array, controller) {
-			console.log(`Decrypting chunk with length ${chunk.length}`);
 			controller.enqueue(await decryptChunk(chunk, key));
 		},
 		async flush(controller) {
