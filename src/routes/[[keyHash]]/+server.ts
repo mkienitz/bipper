@@ -25,7 +25,6 @@ const UploadInfoSchema = z
 		totalSize: z.coerce.number({ coerce: true })
 	})
 	.refine(({ chunkIdx, totalSize }) => {
-		console.log(chunkIdx, totalSize);
 		const maxSize = Math.ceil(totalSize / CHUNK_SIZE) * CHUNK_SIZE;
 		return (chunkIdx + 1) * CHUNK_SIZE <= maxSize;
 	}, 'Chunk index implies an exceeded total size')
