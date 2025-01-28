@@ -148,7 +148,7 @@
 </script>
 
 <div class="flex flex-col space-y-6">
-	<div class="flex flex-col space-y-4 card p-4 shadow-xl bg-base-200">
+	<div class="flex flex-col space-y-4 card card-border p-4 shadow-xl">
 		<input
 			name="file"
 			type="file"
@@ -172,7 +172,7 @@
 	<div>
 		<div class="divider">OR</div>
 	</div>
-	<div class="flex flex-col space-y-4 card p-4 shadow-xl bg-base-200">
+	<div class="flex flex-col space-y-4 card card-border p-4 shadow-xl">
 		<label class="input flex items-center gap-2">
 			<input
 				name="passphrase"
