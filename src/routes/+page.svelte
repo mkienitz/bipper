@@ -147,8 +147,8 @@
 	};
 </script>
 
-<div class="flex flex-col">
-	<div class="flex flex-col space-y-4">
+<div class="flex flex-col space-y-6">
+	<div class="flex flex-col space-y-4 card p-4 shadow-xl bg-base-200">
 		<input
 			name="file"
 			type="file"
@@ -169,8 +169,10 @@
 			Upload
 		</button>
 	</div>
-	<div class="divider my-8">OR</div>
-	<div class="flex flex-col space-y-4">
+	<div>
+		<div class="divider">OR</div>
+	</div>
+	<div class="flex flex-col space-y-4 card p-4 shadow-xl bg-base-200">
 		<label class="input flex items-center gap-2">
 			<input
 				name="passphrase"
