@@ -21,7 +21,7 @@
 	let uploadDisabled = $state(true);
 	let filePath = $state(undefined);
 	$effect(() => {
-		uploadDisabled = (uploadProgress !== 0 && uploadProgress !== 100) || !files;
+		uploadDisabled = (uploadProgress !== 0 && uploadProgress !== 100) || !files || files?.length === 0;
 	});
 
 	const uploadFile = () => {
