@@ -159,7 +159,7 @@
 		></progress>
 		<button
 			class="btn btn-primary min-w-[140px]"
-			disabled={!files || (uploadProgress !== 0 && uploadProgress !== 100)}
+			disabled={files?.length === 0 || (uploadProgress !== 0 && uploadProgress !== 100)}
 			onclick={uploadFile}
 		>
 			Upload
