@@ -23,32 +23,31 @@
 				if (!files || files?.length !== 1) {
 					return;
 				}
+				// Since the filename is lost we encode it at the start of the blob
 				const file = files.item(0)!;
 				const withMeta = addMetadata(file);
-
+				// Create a key and the hex representation of it and its hash.
+				// The hash is used to store and request the file.
 				let key = await crypto.subtle.generateKey(
 					{ name: 'AES-GCM', length: 256 } satisfies AesKeyGenParams,
 					true,
 					['encrypt']
 				);
-
-				// Get hex representation of the key and its hash
 				const keyString = toHex(await crypto.subtle.exportKey('raw', key));
 				const keyHash = await hashKey(key);
-
+				// AES-GCM 256 has an overhead of 12 IV and 16 tag bytes
+				// Chunk accordingly.
 				const OVERHEAD = 12 + 16;
 				const PLAINTEXT_CHUNK_SIZE = CHUNK_SIZE - OVERHEAD;
 				const totalChunks = Math.ceil(withMeta.size / PLAINTEXT_CHUNK_SIZE);
 				const totalSize = withMeta.size + totalChunks * OVERHEAD;
-
+				// Upload chunk by chunk while tracking progress
 				let bytesWritten = 0;
 				for (let i = 0; i < totalChunks; ++i) {
 					const start = i * PLAINTEXT_CHUNK_SIZE;
 					const end = Math.min(start + PLAINTEXT_CHUNK_SIZE, withMeta.size);
-
 					const chunk = withMeta.slice(start, end);
 					const encryptedChunk = await encryptChunk(chunk, key);
-
 					const res = await fetch(`/api/${keyHash}?chunkIdx=${i}&totalSize=${totalSize}`, {
 						method: 'POST',
 						headers: {
@@ -106,21 +105,35 @@
 				const key = await restoreKey(passphrase);
 				const keyHash = await hashKey(key);
 				const res = await fetch(`/api/${keyHash}`);
-				// Create decrypted blob and extract metadata
-				const stream = res
+				// Chunk and decrypt the incoming stream
+				const reader = res
 					.body!.pipeThrough(getChunkTransformer())
-					.pipeThrough(getDecryptTransformer(key));
-				const decryptedBlob = await new Response(stream).arrayBuffer();
-				const { file, filename } = extractMetadata(decryptedBlob);
-
+					.pipeThrough(getDecryptTransformer(key))
+					.getReader();
+				// At least one read is guaranteed to be successful
+				// Peek to extract filename
+				const { value } = await reader.read();
+				const extracted = extractMetadata(value!.buffer);
+				let blob = new Blob([extracted.file]);
+				// Collect remaining chunks
+				// NOTE: window.showSaveFilePicker()
+				// can imrpove this once supported.
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					blob = new Blob([blob, value]);
+				}
 				// Download the decrypted result
-				const url = URL.createObjectURL(file);
+				const url = URL.createObjectURL(blob);
 				const a = document.createElement('a');
 				a.href = url;
-				a.download = filename;
+				a.download = extracted.filename;
 				a.click();
 				URL.revokeObjectURL(url);
-			})(),
+			})().catch((e) => {
+				console.error(e);
+				throw new Error();
+			}),
 			{
 				loading: 'Downloading file...',
 				success: 'Download complete!',
