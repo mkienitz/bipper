@@ -69,7 +69,7 @@
             pname = "bipper";
             version = "0.0.1";
             src = ./.;
-            npmDepsHash = "sha256-fack/rO5G57rYBcqMTo6CQZ7eqHK0Cjhg273VU5r9J8=";
+            npmDepsHash = "sha256-iSTKrpuDIEPNsxqdaqEoo5X9JATYM9a8s/hIAkXKPWI=";
             nativeBuildInputs = [ pkgs.makeWrapper ];
             installPhase = ''
               runHook preInstall
