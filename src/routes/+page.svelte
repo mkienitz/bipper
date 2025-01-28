@@ -11,11 +11,13 @@
 	import { CHUNK_SIZE } from '$lib/common';
 	import toast from 'svelte-5-french-toast';
 	import { toHex } from '$lib/client/util';
+	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 
 	// STATE
 	let files: FileList | undefined = $state(undefined);
 	let uploadProgress = $state(0);
-	let passphrase: string | undefined = $state(undefined);
+	let passphrase: string = $state(page.url.hash.slice(1));
 
 	const uploadFile = () => {
 		toast.promise(
@@ -64,6 +66,7 @@
 					uploadProgress = Math.round((bytesWritten / file.size) * 100);
 				}
 				passphrase = keyString;
+				replaceState('', {});
 			})(),
 			{
 				loading: 'Uploading file...',
@@ -86,7 +89,8 @@
 					console.error(res.body);
 					throw new Error('Deletion request failed');
 				}
-				passphrase = undefined;
+				passphrase = '';
+				replaceState('', {});
 			})(),
 			{
 				loading: 'Deleting file...',
@@ -165,28 +169,25 @@
 			Upload
 		</button>
 	</div>
-  <div class="divider my-8">OR</div>
+	<div class="divider my-8">OR</div>
 	<div class="flex flex-col space-y-4">
-		<label class="input input-bordered flex items-center gap-2">
+		<label class="input flex items-center gap-2">
 			<input
 				name="passphrase"
 				type="text"
 				required={true}
 				placeholder="Enter your passphrase..."
-				class="input grow border-0"
+				class="input grow shadow-none focus:outline-none"
 				bind:value={passphrase}
 			/>
 			<button
 				type="button"
 				aria-label="copy passphrase to clipboard"
-				class="group w-fit"
+				class="group w-fit disabled:opacity-50"
 				disabled={!passphrase}
 				onclick={() => {
-					if (!passphrase) {
-						return;
-					}
-					navigator.clipboard.writeText(passphrase);
-					toast.success('Copied');
+					navigator.clipboard.writeText(`${window.location.host}/#${passphrase}`);
+					toast.success('Copied Link!');
 				}}
 			>
 				<svg
