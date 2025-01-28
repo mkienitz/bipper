@@ -143,69 +143,74 @@
 	};
 </script>
 
-<div class="flex flex-col space-y-4">
-	<input
-		name="file"
-		type="file"
-		bind:files
-		required={true}
-		class="file-input file-input-bordered"
-	/>
-	<progress
-		class="progress {uploadProgress === 100 ? 'progress-success' : 'progress-primary'}"
-		value={uploadProgress}
-		max="100"
-	></progress>
-	<button
-		class="btn btn-primary min-w-[140px]"
-		disabled={!files || (uploadProgress !== 0 && uploadProgress !== 100)}
-		onclick={uploadFile}
-	>
-		Upload
-	</button>
-	<label class="input input-bordered flex items-center gap-2">
+<div class="flex flex-col">
+	<div class="flex flex-col space-y-4">
 		<input
-			name="passphrase"
-			type="text"
+			name="file"
+			type="file"
+			bind:files
 			required={true}
-			placeholder="Enter your passphrase..."
-			class="input grow border-0"
-			bind:value={passphrase}
+			class="file-input file-input-primary"
 		/>
+		<progress
+			class="progress {uploadProgress === 100 ? 'progress-success' : 'progress-primary'}"
+			value={uploadProgress}
+			max="100"
+		></progress>
 		<button
-			type="button"
-			aria-label="copy passphrase to clipboard"
-			class="group w-fit"
-			disabled={!passphrase}
-			onclick={() => {
-				if (!passphrase) {
-					return;
-				}
-				navigator.clipboard.writeText(passphrase);
-				toast.success('Copied');
-			}}
+			class="btn btn-primary min-w-[140px]"
+			disabled={!files || (uploadProgress !== 0 && uploadProgress !== 100)}
+			onclick={uploadFile}
 		>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="24"
-				height="24"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				class="lucide lucide-copy group-hover:text-primary group-disabled:group-hover:text-current"
-				><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path
-					d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-				/></svg
+			Upload
+		</button>
+	</div>
+  <div class="divider my-8">OR</div>
+	<div class="flex flex-col space-y-4">
+		<label class="input input-bordered flex items-center gap-2">
+			<input
+				name="passphrase"
+				type="text"
+				required={true}
+				placeholder="Enter your passphrase..."
+				class="input grow border-0"
+				bind:value={passphrase}
+			/>
+			<button
+				type="button"
+				aria-label="copy passphrase to clipboard"
+				class="group w-fit"
+				disabled={!passphrase}
+				onclick={() => {
+					if (!passphrase) {
+						return;
+					}
+					navigator.clipboard.writeText(passphrase);
+					toast.success('Copied');
+				}}
 			>
-		</button>
-	</label>
-	<div class="flex space-x-2">
-		<button class="btn btn-error grow" disabled={!passphrase} onclick={deleteFile}>Delete</button>
-		<button class="btn btn-primary grow" disabled={!passphrase} onclick={downloadFile}>
-			Download
-		</button>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="lucide lucide-copy group-hover:text-primary group-disabled:group-hover:text-current"
+					><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path
+						d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+					/></svg
+				>
+			</button>
+		</label>
+		<div class="flex space-x-2">
+			<button class="btn btn-error grow" disabled={!passphrase} onclick={deleteFile}>Delete</button>
+			<button class="btn btn-primary grow" disabled={!passphrase} onclick={downloadFile}>
+				Download
+			</button>
+		</div>
 	</div>
 </div>
