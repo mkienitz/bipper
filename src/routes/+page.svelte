@@ -18,6 +18,10 @@
 	let files: FileList | undefined = $state(undefined);
 	let uploadProgress = $state(0);
 	let passphrase: string = $state(page.url.hash.slice(1));
+	let uploadDisabled = $state(true)
+	$effect(() => {
+		uploadDisabled = (uploadProgress !== 0 && uploadProgress !== 100) || files?.length === 0
+	})
 
 	const uploadFile = () => {
 		toast.promise(
@@ -166,7 +170,7 @@
 		></progress>
 		<button
 			class="btn btn-primary min-w-[140px]"
-			disabled={files?.length === 0 || (uploadProgress !== 0 && uploadProgress !== 100)}
+			disabled={uploadDisabled}
 			onclick={uploadFile}
 		>
 			Upload
