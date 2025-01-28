@@ -6,6 +6,10 @@ import { createReadStream } from 'node:fs';
 import { z } from 'zod';
 import { STORE_DIR } from '$lib/server/globals';
 
+// TODO:
+// [ ] Call cleanup logic (handle close, partial file delete) on errors
+// [ ] Add content-length header so client can track progress
+
 type FileUpload = {
 	keyHash: string;
 	totalSize: number;
@@ -22,75 +26,99 @@ const UploadInfoSchema = z
 	.object({
 		chunkIdx: z.coerce.number({ coerce: true }).min(0).finite(),
 		keyHash: KeyHashSchema,
-		totalSize: z.coerce.number({ coerce: true })
+		totalSize: z
+			.string()
+			.refine((val) => !isNaN(Number(val)), {
+				message: 'String must be convertible to a number'
+			})
+			.transform((val) => Number(val))
+			.nullable(),
+		chunkSize: z.number()
 	})
-	.refine(({ chunkIdx, totalSize }) => {
-		const maxSize = Math.ceil(totalSize / CHUNK_SIZE) * CHUNK_SIZE;
-		return (chunkIdx + 1) * CHUNK_SIZE <= maxSize;
-	}, 'Chunk index implies an exceeded total size')
-	.refine(
-		({ totalSize, keyHash }) =>
-			!uploadStates.has(keyHash) || uploadStates.get(keyHash)?.totalSize == totalSize,
-		"Search param 'totalSize' does not match value for the ongoing transaction"
-	);
+	.strict()
+	.refine(({ chunkIdx, totalSize, keyHash, chunkSize }) => {
+		console.log({ chunkIdx, totalSize, keyHash, chunkSize });
+		// OR
+		// Hash must exist and only chunkIdx must be present
+		if (!uploadStates.has(keyHash)) {
+			// New hash
+			// => totalSize must be provided
+			// => chunkIdx must be zero
+			// => chunkSize must not exceed totalSize
+			return totalSize !== null && chunkIdx === 0 && chunkSize <= totalSize;
+		} else {
+			// Existing hash
+			// => totalSize must not be provided
+			// => chunkIdx === chunksWritten + 1
+			// => chunkIdx < totalChunks
+			// => chunkSize + currSize must not exceed totalSize
+			// => If it's not the last chunk chunkSize must be CHUNK_SIZE
+			let currStatus = uploadStates.get(keyHash);
+			return (
+				totalSize === null &&
+				chunkIdx === currStatus!.chunksWritten &&
+				chunkIdx <= currStatus!.totalChunks &&
+				currStatus!.chunksWritten * CHUNK_SIZE + chunkSize <= currStatus!.totalSize! &&
+				(!(chunkIdx !== currStatus!.totalChunks - 1) || chunkSize === CHUNK_SIZE)
+			);
+		}
+	}, 'Invariants were broken');
 
 type UploadInfo = z.infer<typeof UploadInfoSchema>;
-
-const validateKeyHash = (keyHash: string | undefined) => {
-	if (!keyHash) {
-		error(404, { message: 'Missing route param [[keyHash]]' });
-	}
-	const parseResult = KeyHashSchema.safeParse(keyHash);
-	if (!parseResult.success) {
-		error(422, { message: parseResult.error.toString() });
-	}
-	return parseResult.data;
-};
 
 let uploadStates: Map<string, FileUpload> = new Map();
 
 export const POST: RequestHandler = async ({ request, params, url }) => {
+	// Get keyHash, chunkIdx and optionally, totalSize
+	const keyHash = params.keyHash;
 	const chunkIdx = url.searchParams.get('chunkIdx');
-	if (!chunkIdx) {
-		error(400, { message: "Search param 'chunkIdx' was not provided" });
-	}
 	const totalSize = url.searchParams.get('totalSize');
-	if (!totalSize) {
-		error(400, { message: "Search param 'totalSize' was not provided" });
-	}
-	const keyHash = validateKeyHash(params.keyHash);
-	const parseResult = UploadInfoSchema.safeParse({ chunkIdx, keyHash, totalSize });
+	// Use zod to validate the incoming data using the uoloadState als context
+	const arrayBuffer = await request.arrayBuffer();
+	const parseResult = UploadInfoSchema.safeParse({
+		chunkIdx,
+		keyHash,
+		totalSize,
+		chunkSize: arrayBuffer.byteLength
+	});
 	if (!parseResult.success) {
 		error(422, { message: parseResult.error.toString() });
 	}
 	const uploadInfo: UploadInfo = parseResult.data;
-
-	const filePath = path.join(STORE_DIR, uploadInfo.keyHash);
+	// Handle new transaction by setting up initial state and fileHandle
 	if (!uploadStates.has(uploadInfo.keyHash)) {
 		console.info('Starting new transaction...');
+		const filePath = path.join(STORE_DIR, uploadInfo.keyHash);
 		const fileHandle = await fs.open(filePath, 'w+');
 		console.info(`Writing to ${filePath}...`);
-		await fileHandle.truncate(uploadInfo.totalSize);
-		uploadStates.set(keyHash, {
+		await fileHandle.truncate(uploadInfo.totalSize!);
+		uploadStates.set(uploadInfo.keyHash, {
 			keyHash: uploadInfo.keyHash,
-			totalSize: uploadInfo.totalSize,
-			totalChunks: Math.ceil(uploadInfo.totalSize / CHUNK_SIZE),
+			totalSize: uploadInfo.totalSize!,
+			totalChunks: Math.ceil(uploadInfo.totalSize! / CHUNK_SIZE),
 			chunksWritten: 0,
 			fileHandle
 		} satisfies FileUpload);
 	}
-	const currStatus = uploadStates.get(uploadInfo.keyHash)!;
-	const arrayBuffer = await request.arrayBuffer();
+	// After establishing state, write chunk to disk
 	console.debug(`Receiving chunk ${chunkIdx} with size ${arrayBuffer.byteLength}`);
-	currStatus.fileHandle.write(
-		new Uint8Array(arrayBuffer),
-		0,
-		arrayBuffer.byteLength,
-		uploadInfo.chunkIdx * CHUNK_SIZE
-	);
-	uploadStates.set(keyHash, { ...currStatus, chunksWritten: currStatus.chunksWritten + 1 });
-	console.debug(`${currStatus.chunksWritten + 1}/${currStatus.totalChunks} chunks written...`);
-	if (currStatus.chunksWritten + 1 === currStatus.totalChunks) {
+	const currStatus = uploadStates.get(uploadInfo.keyHash)!;
+	try {
+		currStatus.fileHandle.write(
+			new Uint8Array(arrayBuffer),
+			0,
+			arrayBuffer.byteLength,
+			uploadInfo.chunkIdx * CHUNK_SIZE
+		);
+	} catch (e) {
+		console.log(e);
+		await currStatus.fileHandle.close();
+		uploadStates.delete(uploadInfo.keyHash);
+		error(500);
+	}
+	currStatus.chunksWritten += 1;
+	console.debug(`${currStatus.chunksWritten}/${currStatus.totalChunks} chunks written...`);
+	if (currStatus.chunksWritten === currStatus.totalChunks) {
 		await currStatus.fileHandle.close();
 		uploadStates.delete(uploadInfo.keyHash);
 		console.info('Transaction finished!');
@@ -105,6 +133,17 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 			}
 		}
 	);
+};
+
+const validateKeyHash = (keyHash: string | undefined) => {
+	if (!keyHash) {
+		error(404, { message: 'Missing route param [[keyHash]]' });
+	}
+	const parseResult = KeyHashSchema.safeParse(keyHash);
+	if (!parseResult.success) {
+		error(422, { message: parseResult.error.toString() });
+	}
+	return parseResult.data;
 };
 
 export const GET: RequestHandler = async ({ params }) => {

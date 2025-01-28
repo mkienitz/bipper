@@ -50,13 +50,16 @@
 					const end = Math.min(start + PLAINTEXT_CHUNK_SIZE, withMeta.size);
 					const chunk = withMeta.slice(start, end);
 					const encryptedChunk = await encryptChunk(chunk, key);
-					const res = await fetch(`/api/${keyHash}?chunkIdx=${i}&totalSize=${totalSize}`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/octet-stream'
-						},
-						body: encryptedChunk
-					});
+					const res = await fetch(
+						`/api/${keyHash}?chunkIdx=${i}${i === 0 ? '&totalSize=' + totalSize : ''}`,
+						{
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/octet-stream'
+							},
+							body: encryptedChunk
+						}
+					);
 					if (res.status !== 201) {
 						console.error(res.body);
 						uploadProgress = 0;
@@ -148,7 +151,7 @@
 </script>
 
 <div class="flex flex-col space-y-6">
-	<div class="flex flex-col space-y-4 card card-border p-4 shadow-xl">
+	<div class="card card-border flex flex-col space-y-4 p-4 shadow-xl">
 		<input
 			name="file"
 			type="file"
@@ -172,7 +175,7 @@
 	<div>
 		<div class="divider">OR</div>
 	</div>
-	<div class="flex flex-col space-y-4 card card-border p-4 shadow-xl">
+	<div class="card card-border flex flex-col space-y-4 p-4 shadow-xl">
 		<label class="input flex items-center gap-2">
 			<input
 				name="passphrase"
