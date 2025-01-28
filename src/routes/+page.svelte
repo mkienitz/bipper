@@ -6,7 +6,8 @@
 		encryptChunk,
 		extractMetadata,
 		getChunkTransformer,
-		getDecryptTransformer
+		getDecryptTransformer,
+		ENCRYPTION_OVERHEAD
 	} from '$lib/client/crypto';
 	import { CHUNK_SIZE } from '$lib/common';
 	import toast from 'svelte-5-french-toast';
@@ -17,12 +18,17 @@
 	// STATE
 	let files: FileList | undefined = $state(undefined);
 	let uploadProgress = $state(0);
-	let passphrase: string = $state(page.url.hash.slice(1));
 	let uploadDisabled = $state(true);
-	let filePath = $state(undefined);
 	$effect(() => {
-		uploadDisabled = (uploadProgress !== 0 && uploadProgress !== 100) || !files || files?.length === 0;
+		uploadDisabled = uploadProgress !== 0 || !files || files?.length === 0;
 	});
+	let downloadProgress = $state(0);
+	let uploadDownloadDisabled = $state(true);
+	$effect(() => {
+		uploadDownloadDisabled = downloadProgress !== 0 || !passphrase;
+	});
+	let passphrase: string = $state(page.url.hash.slice(1));
+	let filePath = $state(undefined);
 
 	const uploadFile = () => {
 		toast.promise(
@@ -42,12 +48,10 @@
 				);
 				const keyString = toHex(await crypto.subtle.exportKey('raw', key));
 				const keyHash = await hashKey(key);
-				// AES-GCM 256 has an overhead of 12 IV and 16 tag bytes
 				// Chunk accordingly.
-				const OVERHEAD = 12 + 16;
-				const PLAINTEXT_CHUNK_SIZE = CHUNK_SIZE - OVERHEAD;
+				const PLAINTEXT_CHUNK_SIZE = CHUNK_SIZE - ENCRYPTION_OVERHEAD;
 				const totalChunks = Math.ceil(withMeta.size / PLAINTEXT_CHUNK_SIZE);
-				const totalSize = withMeta.size + totalChunks * OVERHEAD;
+				const totalSize = withMeta.size + totalChunks * ENCRYPTION_OVERHEAD;
 				// Upload chunk by chunk while tracking progress
 				let bytesWritten = 0;
 				for (let i = 0; i < totalChunks; ++i) {
@@ -76,6 +80,7 @@
 				passphrase = keyString;
 				files = undefined;
 				filePath = undefined;
+				uploadProgress = 0;
 				replaceState('', {});
 			})(),
 			{
@@ -124,17 +129,27 @@
 					.body!.pipeThrough(getChunkTransformer())
 					.pipeThrough(getDecryptTransformer(key))
 					.getReader();
-				// At least one read is guaranteed to be successful
 				// Peek to extract filename
+				// Track progress
+				const totalBytes = Number(res.headers.get('Content-Length')!);
+				const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
+				let chunksLoaded = 0;
+				// At least one read is guaranteed to be successful
 				const { value } = await reader.read();
+				chunksLoaded += 1;
+				downloadProgress = Math.ceil((chunksLoaded / totalChunks) * 100);
 				const extracted = extractMetadata(value!.buffer);
 				let blob = new Blob([extracted.file]);
 				// Collect remaining chunks
 				// NOTE: window.showSaveFilePicker()
 				// can improve this once supported.
 				while (true) {
+					console.log('More blobs');
 					const { done, value } = await reader.read();
 					if (done) break;
+					chunksLoaded += 1;
+					downloadProgress = Math.ceil((chunksLoaded / totalChunks) * 100);
+					console.log(downloadProgress)
 					blob = new Blob([blob, value]);
 				}
 				// Download the decrypted result
@@ -144,6 +159,7 @@
 				a.download = extracted.filename;
 				a.click();
 				URL.revokeObjectURL(url);
+				downloadProgress = 0
 			})().catch((e) => {
 				console.error(e);
 				throw new Error();
@@ -167,13 +183,19 @@
 			required={true}
 			class="file-input file-input-primary"
 		/>
-		<progress
-			class="progress {uploadProgress === 100 ? 'progress-success' : 'progress-primary'}"
-			value={uploadProgress}
-			max="100"
-		></progress>
-		<button class="btn btn-primary min-w-[140px]" disabled={uploadDisabled} onclick={uploadFile}>
-			Upload
+		<button
+			class="btn btn-primary relative overflow-hidden"
+			disabled={uploadDisabled}
+			onclick={uploadFile}
+		>
+			{#if uploadProgress !== 0}
+				<div
+					class="bg-success absolute top-0 left-0 h-full"
+					style="width: {uploadProgress}%;"
+				></div>
+			{:else}
+				Upload
+			{/if}
 		</button>
 	</div>
 	<div>
@@ -217,9 +239,22 @@
 			</button>
 		</label>
 		<div class="flex space-x-2">
-			<button class="btn btn-error grow" disabled={!passphrase} onclick={deleteFile}>Delete</button>
-			<button class="btn btn-primary grow" disabled={!passphrase} onclick={downloadFile}>
-				Download
+			<button class="btn btn-error flex-1" disabled={uploadDownloadDisabled} onclick={deleteFile}
+				>Delete</button
+			>
+			<button
+				class="btn btn-primary relative flex-1 overflow-hidden"
+				disabled={uploadDownloadDisabled}
+				onclick={downloadFile}
+			>
+				{#if downloadProgress !== 0}
+					<div
+						class="bg-success absolute top-0 left-0 h-full"
+						style="width: {downloadProgress}%;"
+					></div>
+				{:else}
+					Download
+				{/if}
 			</button>
 		</div>
 	</div>

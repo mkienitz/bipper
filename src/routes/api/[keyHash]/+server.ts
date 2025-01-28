@@ -6,10 +6,6 @@ import { createReadStream } from 'node:fs';
 import { z } from 'zod';
 import { STORE_DIR } from '$lib/server/globals';
 
-// TODO:
-// [ ] Call cleanup logic (handle close, partial file delete) on errors
-// [ ] Add content-length header so client can track progress
-
 type FileUpload = {
 	keyHash: string;
 	totalSize: number;
@@ -149,8 +145,13 @@ export const GET: RequestHandler = async ({ params }) => {
 	const filePath = path.join(STORE_DIR, validateKeyHash(params.keyHash));
 	console.info(`Serving ${filePath}...`);
 	try {
+		const size = (await fs.stat(filePath)).size;
 		const fileStream = createReadStream(filePath) as unknown as BodyInit;
-		return new Response(fileStream);
+		return new Response(fileStream, {
+			headers: {
+				'Content-Length': size.toString()
+			}
+		});
 	} catch (e) {
 		console.info('File not found!');
 		error(404);

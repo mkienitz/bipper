@@ -1,6 +1,9 @@
 import { fromHex, toHex } from '$lib/client/util';
 import { CHUNK_SIZE } from '$lib/common';
 
+// AES-GCM 256 has an overhead of 12 IV and 16 tag bytes
+export const ENCRYPTION_OVERHEAD = 12 + 16;
+
 export const hashKey = async (key: CryptoKey): Promise<string> => {
 	return crypto.subtle
 		.exportKey('raw', key)
