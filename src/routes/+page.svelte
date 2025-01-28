@@ -18,10 +18,11 @@
 	let files: FileList | undefined = $state(undefined);
 	let uploadProgress = $state(0);
 	let passphrase: string = $state(page.url.hash.slice(1));
-	let uploadDisabled = $state(true)
+	let uploadDisabled = $state(true);
+	let filePath = $state(undefined);
 	$effect(() => {
-		uploadDisabled = (uploadProgress !== 0 && uploadProgress !== 100) || files?.length === 0
-	})
+		uploadDisabled = (uploadProgress !== 0 && uploadProgress !== 100) || !files;
+	});
 
 	const uploadFile = () => {
 		toast.promise(
@@ -73,6 +74,8 @@
 					uploadProgress = Math.round((bytesWritten / file.size) * 100);
 				}
 				passphrase = keyString;
+				files = undefined;
+				filePath = undefined;
 				replaceState('', {});
 			})(),
 			{
@@ -128,7 +131,7 @@
 				let blob = new Blob([extracted.file]);
 				// Collect remaining chunks
 				// NOTE: window.showSaveFilePicker()
-				// can imrpove this once supported.
+				// can improve this once supported.
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
@@ -160,6 +163,7 @@
 			name="file"
 			type="file"
 			bind:files
+			bind:value={filePath}
 			required={true}
 			class="file-input file-input-primary"
 		/>
@@ -168,11 +172,7 @@
 			value={uploadProgress}
 			max="100"
 		></progress>
-		<button
-			class="btn btn-primary min-w-[140px]"
-			disabled={uploadDisabled}
-			onclick={uploadFile}
-		>
+		<button class="btn btn-primary min-w-[140px]" disabled={uploadDisabled} onclick={uploadFile}>
 			Upload
 		</button>
 	</div>
