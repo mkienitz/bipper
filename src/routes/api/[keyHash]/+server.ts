@@ -37,7 +37,6 @@ const UploadInfoSchema = z
 	})
 	.strict()
 	.refine(({ chunkIdx, totalSize, keyHash, chunkSize }) => {
-		console.log({ chunkIdx, totalSize, keyHash, chunkSize });
 		// OR
 		// Hash must exist and only chunkIdx must be present
 		if (!uploadStates.has(keyHash)) {
