@@ -87,7 +87,7 @@
                 HOST = cfg.address;
                 PORT = toString cfg.port;
                 BIPPER_STORAGE_DIR = cfg.storageDir;
-                BIPPER_MAX_FILE_SIZE = cfg.maxFileSize;
+                BIPPER_MAX_FILE_SIZE = toString cfg.maxFileSize;
               };
             };
             systemd.tmpfiles.settings."10-bipper"."${cfg.storageDir}/store".e.age = cfg.storageDuration;
