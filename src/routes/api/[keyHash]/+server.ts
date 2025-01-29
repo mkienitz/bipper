@@ -4,7 +4,7 @@ import path from 'node:path';
 import { CHUNK_SIZE } from '$lib/common';
 import { createReadStream } from 'node:fs';
 import { z } from 'zod';
-import { STORE_DIR } from '$lib/server/globals';
+import { STORE_DIR, MAX_FILE_SIZE } from '$lib/server/globals';
 
 type FileUpload = {
 	keyHash: string;
@@ -40,7 +40,9 @@ const UploadInfoSchema = z
 			// => totalSize must be provided
 			// => chunkIdx must be zero
 			// => chunkSize must not exceed totalSize
-			return totalSize !== null && chunkIdx === 0 && chunkSize <= totalSize;
+			return (
+				totalSize !== null && totalSize <= MAX_FILE_SIZE && chunkIdx === 0 && chunkSize <= totalSize
+			);
 		} else {
 			// Existing hash
 			// => totalSize must not be provided

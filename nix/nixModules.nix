@@ -56,6 +56,12 @@
               default = "1d";
               example = "1d";
             };
+            maxFileSize = mkOption {
+              description = "Maximum file size in MiB";
+              type = types.int;
+              default = 500;
+              example = 500;
+            };
           };
           config = mkIf cfg.enable {
             nixpkgs.overlays = [
@@ -81,6 +87,7 @@
                 HOST = cfg.address;
                 PORT = toString cfg.port;
                 BIPPER_STORAGE_DIR = cfg.storageDir;
+                BIPPER_MAX_FILE_SIZE = cfg.maxFileSize;
               };
             };
             systemd.tmpfiles.settings."10-bipper"."${cfg.storageDir}/store".e.age = cfg.storageDuration;

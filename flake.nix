@@ -60,6 +60,10 @@
                 name = "BIPPER_STORAGE_DIR";
                 value = ".";
               }
+              {
+                name = "BIPPER_MAX_FILE_SIZE";
+                value = "500";
+              }
             ];
           };
 
