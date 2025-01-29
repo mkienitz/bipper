@@ -8,7 +8,6 @@ import path from 'node:path';
 type FileUpload = {
 	keyHash: string;
 	totalSize: number;
-	totalChunks: number;
 	chunksWritten: number;
 	fileHandle: FileHandle;
 	timeout: NodeJS.Timeout | undefined;
@@ -43,12 +42,13 @@ export class StateHandler {
 			// => chunkSize + currSize must not exceed totalSize
 			// => If it's not the last chunk chunkSize must be CHUNK_SIZE
 			let currStatus = this.uploadStates.get(keyHash);
+			const totalChunks = Math.ceil(currStatus!.totalSize / CHUNK_SIZE);
 			return (
 				totalSize === null &&
 				chunkIdx === currStatus!.chunksWritten &&
-				chunkIdx <= currStatus!.totalChunks &&
+				chunkIdx <= totalChunks &&
 				currStatus!.chunksWritten * CHUNK_SIZE + chunk.byteLength <= currStatus!.totalSize! &&
-				(!(chunkIdx !== currStatus!.totalChunks - 1) || chunk.byteLength === CHUNK_SIZE)
+				(!(chunkIdx !== totalChunks - 1) || chunk.byteLength === CHUNK_SIZE)
 			);
 		}
 	}
@@ -69,7 +69,6 @@ export class StateHandler {
 			this.uploadStates.set(keyHash, {
 				keyHash,
 				totalSize: totalSize!,
-				totalChunks: Math.ceil(totalSize! / CHUNK_SIZE),
 				chunksWritten: 0,
 				fileHandle,
 				timeout: undefined
@@ -93,7 +92,7 @@ export class StateHandler {
 		}
 		currStatus.chunksWritten += 1;
 		// Handle finished transaction
-		if (currStatus.chunksWritten === currStatus.totalChunks) {
+		if (currStatus.chunksWritten === Math.ceil(currStatus.totalSize / CHUNK_SIZE)) {
 			this.cleanup(keyHash);
 			console.info('Transaction finished!');
 		}
