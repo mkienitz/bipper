@@ -12,6 +12,7 @@ type FileUpload = {
 	totalChunks: number;
 	chunksWritten: number;
 	fileHandle: FileHandle;
+	timeout: NodeJS.Timeout | undefined;
 };
 
 const KeyHashSchema = z
@@ -65,6 +66,29 @@ type UploadInfo = z.infer<typeof UploadInfoSchema>;
 
 let uploadStates: Map<string, FileUpload> = new Map();
 
+const createCleanupTimeout = (keyHash: string): NodeJS.Timeout => {
+	return setTimeout(async () => {
+		console.info(`Upload for ${keyHash} has not been continued. Cleaning up...`);
+		await abnormalCleanup(keyHash);
+	}, 30000);
+};
+
+const cleanup = async (keyHash: string) => {
+	const state = uploadStates.get(keyHash);
+	if (!state) {
+		return;
+	}
+	clearTimeout(state.timeout);
+	await state.fileHandle.close();
+	uploadStates.delete(keyHash);
+};
+
+const abnormalCleanup = async (keyHash: string) => {
+	const filePath = path.join(STORE_DIR, keyHash);
+	await fs.rm(filePath, { force: true });
+	await cleanup(keyHash);
+};
+
 export const POST: RequestHandler = async ({ request, params, url }) => {
 	// Get keyHash, chunkIdx and optionally, totalSize
 	const keyHash = params.keyHash;
@@ -83,41 +107,43 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 	}
 	const uploadInfo: UploadInfo = parseResult.data;
 	// Handle new transaction by setting up initial state and fileHandle
+	const filePath = path.join(STORE_DIR, uploadInfo.keyHash);
 	if (!uploadStates.has(uploadInfo.keyHash)) {
 		console.info('Starting new transaction...');
-		const filePath = path.join(STORE_DIR, uploadInfo.keyHash);
-		const fileHandle = await fs.open(filePath, 'w+');
+		// If open fails, no cleanup is required
+		const fileHandle = await fs.open(filePath, 'a');
 		console.info(`Writing to ${filePath}...`);
-		await fileHandle.truncate(uploadInfo.totalSize!);
 		uploadStates.set(uploadInfo.keyHash, {
 			keyHash: uploadInfo.keyHash,
 			totalSize: uploadInfo.totalSize!,
 			totalChunks: Math.ceil(uploadInfo.totalSize! / CHUNK_SIZE),
 			chunksWritten: 0,
-			fileHandle
+			fileHandle,
+			timeout: undefined
 		} satisfies FileUpload);
 	}
+
 	// After establishing state, write chunk to disk
 	console.debug(`Receiving chunk ${chunkIdx} with size ${arrayBuffer.byteLength}`);
 	const currStatus = uploadStates.get(uploadInfo.keyHash)!;
+
+	if (currStatus.timeout) {
+		clearTimeout(currStatus.timeout);
+	}
+	currStatus.timeout = createCleanupTimeout(uploadInfo.keyHash);
+
 	try {
-		currStatus.fileHandle.write(
-			new Uint8Array(arrayBuffer),
-			0,
-			arrayBuffer.byteLength,
-			uploadInfo.chunkIdx * CHUNK_SIZE
-		);
+		currStatus.fileHandle.write(new Uint8Array(arrayBuffer), 0, arrayBuffer.byteLength);
 	} catch (e) {
-		console.log(e);
-		await currStatus.fileHandle.close();
-		uploadStates.delete(uploadInfo.keyHash);
+		console.error(e);
+		abnormalCleanup(uploadInfo.keyHash);
 		error(500);
 	}
 	currStatus.chunksWritten += 1;
 	console.debug(`${currStatus.chunksWritten}/${currStatus.totalChunks} chunks written...`);
+	// Handle finished transaction
 	if (currStatus.chunksWritten === currStatus.totalChunks) {
-		await currStatus.fileHandle.close();
-		uploadStates.delete(uploadInfo.keyHash);
+		cleanup(uploadInfo.keyHash);
 		console.info('Transaction finished!');
 	}
 
