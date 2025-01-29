@@ -8,13 +8,19 @@ export const init: ServerInit = async () => {
 		console.error('BIPPER_STORAGE_DIR is not set!');
 		process.exit(1);
 	}
-	const storeDir = path.join(env.BIPPER_STORAGE_DIR, 'store/');
-	await mkdir(storeDir, { recursive: true });
+	try {
+		const storeDir = path.join(env.BIPPER_STORAGE_DIR, 'store/');
+		await mkdir(storeDir, { recursive: true });
+	} catch (e) {
+		console.error(`Could not create storage dir!:\n${e}`);
+		process.exit(1);
+	}
 
 	if (!env.BIPPER_MAX_FILE_SIZE) {
 		console.error('BIPPER_MAX_FILE_SIZE is not set!');
 		process.exit(1);
 	}
+
 	const maxFileSize = parseInt(env.BIPPER_MAX_FILE_SIZE);
 	if (Number.isNaN(maxFileSize) || maxFileSize <= 0) {
 		console.error(`Invalid value for BIPPER_MAX_FILE_SIZE=${env.BIPPER_MAX_FILE_SIZE}`);
