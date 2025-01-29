@@ -181,7 +181,7 @@
 			bind:files
 			bind:value={filePath}
 			required={true}
-			class="file-input file-input-primary"
+			class="file-input file-input-primary w-full"
 		/>
 		<button
 			class="btn btn-primary relative overflow-hidden"
