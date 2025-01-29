@@ -37,10 +37,7 @@ export const POST: RequestHandler = async ({ request, params, url }) => {
 	);
 };
 
-const validateKeyHash = (keyHash: string | undefined) => {
-	if (!keyHash) {
-		error(404, { message: 'Missing route param [[keyHash]]' });
-	}
+const validateKeyHash = (keyHash: string) => {
 	const parseResult = KeyHashSchema.safeParse(keyHash);
 	if (!parseResult.success) {
 		error(422, { message: parseResult.error.toString() });
@@ -49,7 +46,7 @@ const validateKeyHash = (keyHash: string | undefined) => {
 };
 
 export const GET: RequestHandler = async ({ params }) => {
-	const filePath = path.join(getStorageDir(), validateKeyHash(params.keyHash));
+	const filePath = path.join(getStorageDir(), validateKeyHash(params.keyHash!));
 	console.info(`Serving ${filePath}...`);
 	try {
 		const size = (await fs.stat(filePath)).size;
@@ -66,7 +63,7 @@ export const GET: RequestHandler = async ({ params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params }) => {
-	const filePath = path.join(getStorageDir(), validateKeyHash(params.keyHash));
+	const filePath = path.join(getStorageDir(), validateKeyHash(params.keyHash!));
 	console.info(`Deleting ${filePath}...`);
 	try {
 		await fs.rm(filePath);
