@@ -1,4 +1,4 @@
-import { fromHex, toHex } from '$lib/client/util';
+import { fromHex, toHex } from '$lib/client/utils';
 import { CHUNK_SIZE } from '$lib/common';
 
 // AES-GCM 256 has an overhead of 12 IV and 16 tag bytes

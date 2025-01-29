@@ -11,7 +11,7 @@
 	} from '$lib/client/crypto';
 	import { CHUNK_SIZE } from '$lib/common';
 	import toast from 'svelte-5-french-toast';
-	import { toHex } from '$lib/client/util';
+	import { toHex } from '$lib/client/utils';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 

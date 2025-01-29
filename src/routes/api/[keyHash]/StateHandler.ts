@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '$lib/common';
-import { MAX_FILE_SIZE, STORE_DIR } from '$lib/server/globals';
 import type { StateUpdate } from '$lib/server/schemas';
+import { getMaxFileSize, getStorageDir } from '$lib/server/utils';
 import { error } from '@sveltejs/kit';
 import fs, { type FileHandle } from 'node:fs/promises';
 import path from 'node:path';
@@ -31,7 +31,7 @@ export class StateHandler {
 			// => chunkSize must not exceed totalSize
 			return (
 				totalSize !== null &&
-				totalSize <= MAX_FILE_SIZE &&
+				totalSize <= getMaxFileSize() &&
 				chunkIdx === 0 &&
 				chunk.byteLength <= totalSize
 			);
@@ -60,7 +60,7 @@ export class StateHandler {
 
 		const { keyHash, totalSize, chunk } = stateUpdate;
 		// Handle new transaction by setting up initial state and fileHandle
-		const filePath = path.join(STORE_DIR, keyHash);
+		const filePath = path.join(getStorageDir(), keyHash);
 		if (!this.uploadStates.has(keyHash)) {
 			console.info('Starting new transaction...');
 			// If open fails, no cleanup is required
@@ -117,7 +117,7 @@ export class StateHandler {
 	}
 
 	private async abnormalCleanup(keyHash: string) {
-		const filePath = path.join(STORE_DIR, keyHash);
+		const filePath = path.join(getStorageDir(), keyHash);
 		await fs.rm(filePath, { force: true });
 		await this.cleanup(keyHash);
 	}

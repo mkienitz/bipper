@@ -2,9 +2,9 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createReadStream } from 'node:fs';
-import { STORE_DIR } from '$lib/server/globals';
 import { StateHandler } from './StateHandler';
 import { KeyHashSchema, StateUpdateSchema, type StateUpdate } from '$lib/server/schemas';
+import { getStorageDir } from '$lib/server/utils';
 
 const stateHandler = new StateHandler();
 
@@ -49,7 +49,7 @@ const validateKeyHash = (keyHash: string | undefined) => {
 };
 
 export const GET: RequestHandler = async ({ params }) => {
-	const filePath = path.join(STORE_DIR, validateKeyHash(params.keyHash));
+	const filePath = path.join(getStorageDir(), validateKeyHash(params.keyHash));
 	console.info(`Serving ${filePath}...`);
 	try {
 		const size = (await fs.stat(filePath)).size;
@@ -66,7 +66,7 @@ export const GET: RequestHandler = async ({ params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params }) => {
-	const filePath = path.join(STORE_DIR, validateKeyHash(params.keyHash));
+	const filePath = path.join(getStorageDir(), validateKeyHash(params.keyHash));
 	console.info(`Deleting ${filePath}...`);
 	try {
 		await fs.rm(filePath);
